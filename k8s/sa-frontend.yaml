@@ -1,0 +1,37 @@
+# k8s/sa-frontend.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sa-frontend
+  namespace: sa
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sa-frontend } }
+  template:
+    metadata: { labels: { app: sa-frontend } }
+    spec:
+      containers:
+        - name: frontend
+          image: kaiwenhuang/sa-frontend:v1  # TODO: replace
+          ports: [{ containerPort: 80 }]
+          volumeMounts:
+            - name: nginx-conf
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+      volumes:
+        - name: nginx-conf
+          configMap:
+            name: sa-frontend-nginx
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sa-frontend
+  namespace: sa
+spec:
+  selector: { app: sa-frontend }
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+  type: LoadBalancer  # English note: expose public IP for demo

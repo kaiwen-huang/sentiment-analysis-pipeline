@@ -13,3 +13,5 @@ target/
 # IDE ignored files
 .idea/
 *.iml
+
+.DS_store

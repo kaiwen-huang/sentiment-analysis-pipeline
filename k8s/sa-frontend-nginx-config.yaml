@@ -1,0 +1,26 @@
+# k8s/sa-frontend-nginx-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sa-frontend-nginx
+  namespace: sa
+data:
+  default.conf: |
+    # English note:
+    # Serve React static files and proxy API calls to the Java WebApp via service DNS.
+    server {
+      listen 80;
+      server_name _;
+      root /usr/share/nginx/html;
+      index index.html;
+
+      location / {
+        try_files $uri /index.html;
+      }
+
+      # English note: proxy API (adjust path if your frontend uses another endpoint)
+      location /api/ {
+        proxy_pass http://sa-webapp:8080/;
+        proxy_set_header Host $host;
+      }
+    }
