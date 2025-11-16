@@ -1,0 +1,25 @@
+# infra/sa-logic.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: sa-logic, namespace: sa }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sa-logic } }
+  template:
+    metadata: { labels: { app: sa-logic } }
+    spec:
+      containers:
+        - name: logic
+          image: kaiwenhuang/sa-logic:v4
+          env:
+            - { name: KAFKA_BOOTSTRAP, value: "kafka-broker:9092" }
+            - { name: REQ_TOPIC, value: "sa.requests" }
+            - { name: REP_TOPIC, value: "sa.replies" }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: sa-logic, namespace: sa }
+spec:
+  selector: { app: sa-logic }
+  ports: [{ name: dummy, port: 5000, targetPort: 5000 }]
+  type: ClusterIP

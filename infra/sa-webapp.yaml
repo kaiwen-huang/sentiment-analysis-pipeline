@@ -1,0 +1,18 @@
+# infra/sa-webapp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: sa-webapp, namespace: sa }
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: sa-webapp } }
+  template:
+    metadata: { labels: { app: sa-webapp } }
+    spec:
+      containers:
+        - name: webapp
+          image: kaiwenhuang/sa-webapp:v5
+          ports: [{ containerPort: 8080 }]
+          env:
+            - { name: KAFKA_BOOTSTRAP, value: "kafka-broker:9092" }
+            - { name: REQ_TOPIC, value: "sa.requests" }
+            - { name: REPLY_TOPIC, value: "sa.replies" }

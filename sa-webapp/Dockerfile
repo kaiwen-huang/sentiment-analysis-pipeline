@@ -11,7 +11,7 @@ WORKDIR /
 # copy the built jar (whatever the snapshot name is)
 COPY --from=build /app/target/*SNAPSHOT.jar /app.jar
 
-# this env will be overridden in K8s
+# this env will be overridden in infra
 ENV SA_LOGIC_API_URL=http://localhost:5000
 EXPOSE 8080
 CMD ["sh","-c","java -jar /app.jar --sa.logic.api.url=${SA_LOGIC_API_URL}"]

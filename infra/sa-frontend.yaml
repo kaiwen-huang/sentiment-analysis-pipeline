@@ -1,4 +1,4 @@
-# k8s/sa-frontend.yaml
+# infra/sa-frontend.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,7 +12,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: kaiwenhuang/sa-frontend:v1  # TODO: replace
+          image: kaiwenhuang/sa-frontend:v4
           ports: [{ containerPort: 80 }]
           volumeMounts:
             - name: nginx-conf
