@@ -1,111 +1,135 @@
-# HW3 — Microservice Orchestration on the Cloud (GKE)
+# Sentiment Analysis Pipeline
 
-This repository contains my deployment of the Sentiment Analyzer microservice application to Google Kubernetes Engine (GKE).
+Real-time sentiment analysis pipeline built with Kafka, Docker, and Kubernetes.
 
-Services:
+## Project overview
 
-* `sa-frontend`: Nginx serving the React app
-* `sa-webapp`: Spring Boot web app
-* `sa-logic`: Python service for sentiment analysis
+This repository demonstrates an event-driven, scalable sentiment analysis platform. The system is implemented as multiple microservices: a React-based frontend, a Python-based sentiment analysis service, and a Java backend web application. Services communicate via Apache Kafka for message streaming and decoupling. Each service is containerized with Docker and deployment manifests are provided for Kubernetes.
 
-End-to-end flow: browser → webapp → logic → webapp → browser.
+Purpose: to showcase microservice architecture, real-time streaming with Kafka, containerization, Kubernetes deployments, and simple CI/CD automation.
 
-# Videos
-- Cloud demo: `/demo.mp4`
-- Code/config walkthrough: `/code.mp4`
+## Architecture
 
-# Images
-Great—those are exactly the public-style URLs Docker Hub uses. I wasn’t able to load the repo pages from this environment (Docker Hub blocks headless access), so I won’t claim they’re public from here, but per the homework you just need to **list** the image URLs and make sure they’re public on your side. The tags you used come straight from your build/update scripts. I’ve formatted a README block you can paste in.
+- Frontend (React): collects sentences from users, displays analysis results, and provides a simple UI for interaction.
+- Backend API (`sa-webapp` - Java Spring Boot): exposes HTTP endpoints for the frontend, integrates with Kafka using a request/reply pattern.
+- Logic service (`sa-logic` - Python): consumes requests from Kafka, runs sentiment analysis (simple NLP), and replies with results.
+- Apache Kafka: message broker used for request/response and event streaming.
+- Kubernetes manifests (`infra/`, `resource-manifests/`): deployment, service, and load-balancer definitions for cluster deployment.
 
-# Docker Hub Images (public)
+High-level flow:
+1. User submits a sentence in the frontend → POST to `sa-webapp`.
+2. `sa-webapp` publishes a request message to a Kafka topic (request topic).
+3. `sa-logic` consumes the request, performs sentiment analysis, and writes the result to a reply/result topic.
+4. `sa-webapp` (or frontend) reads the reply and returns the analysis to the user.
 
-I list all Docker Hub image URLs:
+## Components
 
-* **Logic (Python)**
-  * Repository: [https://hub.docker.com/r/kaiwenhuang/sa-logic](https://hub.docker.com/r/kaiwenhuang/sa-logic)
+- `sa-frontend/`: React application (source and pre-built `build/`).
+- `sa-logic/`: Python sentiment analysis service and dependencies (`sa/requirements.txt`).
+- `sa-webapp/`: Java Spring Boot application (`pom.xml`, `src/main/java`) with Kafka integration.
+- `infra/` & `resource-manifests/`: Kubernetes manifests for Kafka and each service.
+- `scripts/`: helper scripts for build, push, and deployment (e.g., `scripts/hw3/02_build_push.sh`, `03_deploy.sh`).
 
-* **WebApp (Spring Boot)**
-  * Repository: [https://hub.docker.com/r/kaiwenhuang/sa-webapp](https://hub.docker.com/r/kaiwenhuang/sa-webapp)
+## Tech stack
 
-* **Frontend (Nginx/React)**
-  * Repository: [https://hub.docker.com/r/kaiwenhuang/sa-frontend](https://hub.docker.com/r/kaiwenhuang/sa-frontend)
+- Frontend: React (Node.js, npm)
+- Backend: Java (Spring Boot, Maven)
+- Logic: Python (simple NLP)
+- Messaging: Apache Kafka
+- Containerization: Docker
+- Orchestration: Kubernetes
+- CI/CD: shell scripts included; easily adaptable to GitHub Actions/GitLab CI
 
+## Quick start (development & local testing)
 
+Prerequisites:
+- git
+- Docker
+- Java 11+ and Maven
+- Python 3.8+
+- Node.js and npm
+- A running Kafka broker (local or in Kubernetes)
 
-# Steps
+Clone the repo:
 
-Got it. Here’s a **Steps** section written in first person, in English, following exactly the order of your scripts. I’m describing what each script does, what I set or check, and what outcome I expect—**no shell commands included**.
+```bash
+git clone https://github.com/<your-user>/hw-3-microservice-orchestraction-kaiwenhu-cmu.git
+cd infra-mastery
+```
 
----
+Run frontend (development mode):
 
-## Steps (run in this exact order)
+```bash
+cd sa-frontend
+npm install
+npm start
+```
 
-> I run these from the repo root. Before starting, I make sure Docker Desktop is running and I’m signed in to Docker Hub.
+Run sentiment logic locally:
 
-### 00_mac_setup.sh — set up my Mac tooling
+```bash
+cd sa-logic/sa
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+python sentiment_analysis.py
+```
 
-I install Docker Desktop, Google Cloud SDK, `kubectl`, and `gnu-sed`. I also install/enable the GKE auth plugin and set the environment variable so `kubectl` uses it.
+Run the Java backend:
 
-**What I expect after it finishes:** Docker Desktop is running; `gcloud` and `kubectl` are available on my PATH.
+```bash
+cd sa-webapp
+./mvnw spring-boot:run
+```
 
----
+Note: If you do not have a local Kafka instance, you can run a single-node Kafka container for development or adapt the services to communicate over HTTP for local testing.
 
-### 01_gke_setup.sh — set my GCP project and create a small zonal GKE cluster
+## Docker build & push
 
-I set my `PROJECT_ID`, region/zone/cluster variables and log in to GCP. I enable Compute and Kubernetes Engine APIs, create a **zonal** GKE cluster sized to avoid quota issues (1 node, e2-medium, pd-standard 30GB), fetch credentials, and create the `sa` namespace.
+Each service contains a Dockerfile. Example build and push commands:
 
-**What I expect after it finishes:** my current context points to the new cluster; I can see nodes; the `sa` namespace exists.
+```bash
+# Build and push all images (example script)
+sh scripts/hw3/02_build_push.sh
 
----
+# Or build individually
+cd sa-frontend && docker build -t <registry>/sa-frontend:latest .
+cd ../sa-logic && docker build -t <registry>/sa-logic:latest .
+cd ../sa-webapp && docker build -t <registry>/sa-webapp:latest .
+```
 
-### 02_build_push.sh — build and push my three Docker images (linux/amd64)
+Replace `<registry>` with your container registry (Docker Hub, GCR, ECR, etc.). The scripts demonstrate tagging and pushing images.
 
-I force builds for `linux/amd64` (important on Apple Silicon) and set my Docker Hub username. Then I build and push **sa-logic:v1**, **sa-webapp:v1**, and **sa-frontend:v1** from their respective directories.
+## Kubernetes deployment
 
-**What I expect after it finishes:** all three images exist in my Docker Hub account, publicly accessible.
+Apply manifests from `infra/` and `resource-manifests/` to deploy Kafka and the services:
 
----
+```bash
+# Ensure kubectl is configured to the desired cluster
+kubectl apply -f infra/kafka-stable.yaml
+kubectl apply -f infra/sa-webapp.yaml
+kubectl apply -f infra/sa-logic.yaml
+kubectl apply -f infra/sa-frontend.yaml
+```
 
-### 03_deploy.sh — apply my Kubernetes manifests to GKE
+Check resources and logs:
 
-I substitute my Docker Hub username into the YAMLs, apply the manifests for logic, webapp, frontend (plus the Nginx config), and watch Services so I can see when `sa-frontend` gets an external IP.
+```bash
+kubectl get pods,svc -n default
+kubectl logs deployment/sa-webapp
+```
 
-**What I expect after it finishes:** Deployments and Services exist in namespace `sa`. Eventually `sa-frontend` shows an External IP I can open in the browser.
+For local cluster testing, consider using Minikube or kind and push images into the local cluster registry.
 
----
+## Testing & verification
 
-### 04_build_npm.sh — my Dockerfile expects a prebuilt React
+- Frontend: open the app in a browser, submit a sentence, and observe the sentiment result.
+- Backend: use curl or Postman to POST to the API and verify the Kafka request/reply flow.
 
-If my frontend Dockerfile is the simple “copy the built static files into Nginx” variant, I compile the React app to produce the `build/` directory and confirm it exists. If I’m using a multi-stage Dockerfile, I usually don’t need this script.
+Example curl:
 
-**What I expect after it finishes:** a `sa-frontend/build/` folder with production assets (only needed for the non–multi-stage Dockerfile).
-
----
-
-### 05_update_frontend.sh — rebuild/push frontend and roll the deployment
-
-I run this because I change React code from `localhost` to `/api/sentiment`. I rebuild **sa-frontend** with a new tag, push it, update the frontend Deployment’s image in the `sa` namespace, and wait for the rollout to complete. 
-
-**What I expect after it finishes:** the frontend Pods are replaced with the new image, and the site serves my latest build.
-
----
-
-### 06_update_backend_logic.sh — rebuild/push webapp and logic (v2) and roll
-
-I rebuild **sa-webapp** and **sa-logic** for `linux/amd64` with updated tags, push them, update both Deployments, and wait for the rollouts to finish. I use this after changing backend code or Dockerfiles.
-
-**What I expect after it finishes:** both services are running the new images, and their endpoints appear on the corresponding Services.
-
----
-
-### 07_update_backend_logic.sh — rebuild/push (v3) and ensure the webapp targets the in-cluster logic URL
-
-I rebuild **sa-webapp** and **sa-logic** again (new tags), push them, **set** the webapp’s environment variable `SA_LOGIC_API_URL` to `http://sa-logic:5000`, update the webapp image, and wait for the rollout. This guarantees the webapp calls the logic service by Service DNS, not `localhost`.
-
-**What I expect after it finishes:** webapp logs show requests going to `http://sa-logic:5000/...`, and end-to-end requests from the browser succeed.
-
----
-
-### After all scripts
-
-I open the external URL from the `sa-frontend` Service and test the app by submitting a sentence. For grading, I also include the two required videos (cloud demo and code/config walkthrough) and list my three public Docker Hub image URLs in the README, per the assignment’s submission guidelines. 
+```bash
+curl -X POST "http://<sa-webapp-host>:<port>/api/sentiment" \
+	-H "Content-Type: application/json" \
+	-d '{"sentence":"I love this service"}'
+```
